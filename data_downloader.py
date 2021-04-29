@@ -9,12 +9,12 @@ main_url = "https://michalwrzosek.pl/przepisy/kategoria/"
 complete_recipe = {}
 
 
-#meal_types = ['dania-glowne', 'zupy', 'sniadania-kolacje']
-meal_types = ['zupy']
+meal_types = ['dania-glowne', 'zupy', 'sniadania-kolacje']
+#meal_types = ['zupy']
 
 def create_request(meal_type, page):
     r_url = main_url + meal_type + f"/page/{page}?post_type=przepisy"
-    #print(r_url)
+    print(r_url)
     return requests.get(r_url)
 
 def create_soup(request):
@@ -41,14 +41,13 @@ def count_how_many_pages(soup):
 #     print(urls_found)
 #     #return [re.compile(r'//.+(.html)').search(str(url)).group().replace('//', 'http://') for url in urls_found]
 
-def find_recipes(soup, meal_type):
+def fetch_recipes_data(soup, meal_type):
     recipes = soup.find_all("div", {"class": "przepis-miniatura"})
     for index, recipe in enumerate(recipes):
         recipe_name = recipe.select('.przepis-miniatura-opis > h4')
         macro_values = recipes_macros(recipe)
-        # url = recipe.select('.przepis-miniatura > a')
-        # print(url)
-
+        url = recipe.find('a', href=True)
+        img = recipe.find('img', src=True)
 
         complete_recipe[recipe['data-id']] = {
             'nazwa' : del_html_tags(str(recipe_name[0])),
@@ -56,15 +55,15 @@ def find_recipes(soup, meal_type):
             'b' : macro_values[1],
             'ww' : macro_values[2],
             't' : macro_values[3],
-            'rodzaj' : meal_type
-
-
+            'rodzaj' : meal_type,
+            'url' : url['href'],
+            'img' : img['src']
         }
     return complete_recipe
 
 
-def save_json_to_file(json_object, file_name):
-    with open(f'json/{file_name}.json', 'w', encoding='utf-8') as f:
+def save_json_to_file(json_object):
+    with open(f'json/recipes_database.json', 'w', encoding='utf-8') as f:
         f.write(json_object)
 
 def create_dir_for_jsons():
@@ -73,7 +72,7 @@ def create_dir_for_jsons():
         os.mkdir(dir_path)
     return dir_path
 
-print("Rozpoczynam pobieranie przepisów...")
+print("Rozpoczynam pobieranie przepisów z adresów:")
 create_dir_for_jsons()
 for meal_type in meal_types:
     page_counter = 1
@@ -85,11 +84,11 @@ for meal_type in meal_types:
     while int(number_of_pages) >= page_counter:
         response = create_request(meal_type, page_counter)
         soup_obj = create_soup(response)
-        found_recipes = find_recipes(soup_obj, meal_type)
-        json_recipies = json.dumps(found_recipes, indent=5, ensure_ascii=False)
+        found_recipes = fetch_recipes_data(soup_obj, meal_type)
+        json_recipies = json.dumps(found_recipes, indent=6, ensure_ascii=False)
         page_counter += 1
 
-    save_json_to_file(json_recipies, meal_type)
+save_json_to_file(json_recipies)
 
     # for k, v in found_recipes.items():
     #     print(f'Numer: {k}')
