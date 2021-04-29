@@ -41,7 +41,7 @@ def count_how_many_pages(soup):
 #     print(urls_found)
 #     #return [re.compile(r'//.+(.html)').search(str(url)).group().replace('//', 'http://') for url in urls_found]
 
-def find_recipes(soup):
+def find_recipes(soup, meal_type):
     recipes = soup.find_all("div", {"class": "przepis-miniatura"})
     for index, recipe in enumerate(recipes):
         recipe_name = recipe.select('.przepis-miniatura-opis > h4')
@@ -56,6 +56,7 @@ def find_recipes(soup):
             'b' : macro_values[1],
             'ww' : macro_values[2],
             't' : macro_values[3],
+            'rodzaj' : meal_type
 
 
         }
@@ -84,7 +85,7 @@ for meal_type in meal_types:
     while int(number_of_pages) >= page_counter:
         response = create_request(meal_type, page_counter)
         soup_obj = create_soup(response)
-        found_recipes = find_recipes(soup_obj)
+        found_recipes = find_recipes(soup_obj, meal_type)
         json_recipies = json.dumps(found_recipes, indent=5, ensure_ascii=False)
         page_counter += 1
 
