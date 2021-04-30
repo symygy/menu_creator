@@ -1,12 +1,18 @@
 import random
 import json
-
+import os
+from parameters import *
 
 def load_json_from_file():
-    with open(f'json/recipes_database.json', 'r', encoding='utf-8') as f_json:
-        recipes = json.load(f_json)
-        print(f'ilosc przepisów w bazie to: {len(recipes)} ')
-        return recipes
+    with open(f'json/{JSON_DB_NAME}', 'r', encoding='utf-8') as f_json:
+        if os.stat(f'json/{JSON_DB_NAME}').st_size > 0:
+            recipes = json.load(f_json)
+            print(f'Wczytano plik z przepisami. Ilość przepisów w bazie to: {len(recipes)} ')
+            print("-----------------------------------------------------------")
+            print("-----------------------------------------------------------")
+            return recipes
+        else:
+            print('Plik z przepisami jest pusty !')
 
 def print_all_recipes(test):
     for value in test:
@@ -20,85 +26,62 @@ def random_meal(recipes, meal_type):
                 filtered_recipes.append(k)
     return random.choice(filtered_recipes)
 
-def daily(recipes, kcal_limit, meals_limit):
-    kcal_daily = 0
+def daily_menu(recipes, tollerance=100, kcal_limit=1500, meals_limit=3):
+    daily_kcal, total_kcal, total_proteins, total_fat, total_carbs, i = 0, 0, 0, 0, 0, 0
+    kcal_tolerance = tollerance
+    daily_meal_set, meal_list = [], []
 
-    while kcal_limit >= kcal_daily:
+    if recipes is not None:
+        if meals_limit > 5 or meals_limit < 3:
+            print('Wybierz liczbę posiłków z przedziału: 3 - 5')
         if meals_limit == 3:
-            meal1 = random_meal(recipes, 'sniadania-kolacje')
-            meal2 = random_meal(recipes, 'dania-glowne')
-            meal3 = random_meal(recipes, 'sniadania-kolacje')
-        elif meals_limit == 4:
-            meal1 = random_meal(recipes, 'sniadania-kolacje')
-            meal2 = random_meal(recipes, 'sniadania-kolacje')
-            meal3 = random_meal(recipes, 'dania-glowne')
-            meal4 = random_meal(recipes, 'sniadania-kolacje')
-        elif meals_limit == 5:
-            meal1 = random_meal(recipes, 'sniadania-kolacje')
-            meal2 = random_meal(recipes, 'sniadania-kolacje')
-            meal3 = random_meal(recipes, 'dania-glowne')
-            meal4 = random_meal(recipes, 'sniadania-kolacje')
-            meal5 = random_meal(recipes, 'sniadania-kolacje')
+            meal_list = ['sniadania-kolacje', 'dania-glowne', 'sniadania-kolacje']
+        if meals_limit == 4:
+            meal_list = ['sniadania-kolacje', 'sniadania-kolacje', 'dania-glowne', 'sniadania-kolacje']
+        if meals_limit == 5:
+            meal_list = ['sniadania-kolacje', 'sniadania-kolacje', 'dania-glowne', 'przekaski', 'sniadania-kolacje']
+
+        while (kcal_limit - kcal_tolerance >= daily_kcal) or (kcal_limit + kcal_tolerance  <= daily_kcal):
+            daily_meal_set.clear()
+            daily_kcal = 0
+
+            for meal_type in meal_list:
+                meal = random_meal(recipes, meal_type)
+                daily_meal_set.append(meal)
+                daily_kcal += int(float(recipes[meal]['kcal']))
+
+            if i == ITERATION_LIMITER:
+                print("Nie udało się dobrać kaloryczności. Spróbuj zwiększyć liczbę posiłków lub zmniejsz limit kalorii.")
+                daily_meal_set.clear()
+                daily_kcal = 0
+                break
+            i += 1
+
+    if daily_kcal != 0:
+        print(f'Menu wybrane dla limitu kcal: {kcal_limit} i {meals_limit} posiłków to: ')
+        print("***********************************************************")
+
+    for index, meal in enumerate(daily_meal_set):
+        meal_kcal = int(float(recipes[meal]['kcal']))
+        meal_protein = int(float(recipes[meal]['b']))
+        meal_fat = int(float(recipes[meal]['t']))
+        meal_carbs = int(float(recipes[meal]['ww']))
+
+        total_kcal += meal_kcal
+        total_proteins += meal_protein
+        total_fat += meal_fat
+        total_carbs += meal_carbs
+
+        url = recipes[meal]['url']
+
+        print(f"Posiłek nr: {index+1} | {recipes[meal]['nazwa']}")
+        print(f"Wartość odżywcza: kcal: {meal_kcal} | b: {meal_protein} | t: {meal_fat} | ww: {meal_carbs}")
+        print(f"URL: {url}")
+        print("***********************************************************")
+    if daily_kcal != 0:
+        print(f'Podsumowanie: kcal: {total_kcal} | b: {total_proteins} | t: {total_fat} | ww: {total_carbs}')
 
 
-       # kcal_daily += float(recipes[random_recipe]['kcal'])
-
-    print(recipes[meal1]['nazwa'])
-    print(recipes[meal2]['nazwa'])
-    print(recipes[meal3]['nazwa'])
-
-def make_daily_menu(recipes, kcal_limit, meals_limit):
-    kcal_daily = 0
-    protein_daily = 0
-    carbs_daily = 0
-    fat_daily = 0
-    tollerance_kcal = 100
-    meal_counter = 1
-
-    daily_breakfast = []
-    daily_dinner = []
-    daily_supper = []
-
-    while kcal_limit >= kcal_daily:
-        random_recipe = random.choice(list(recipes))
-        if (recipes[random_recipe]['rodzaj'] == 'sniadania-kolacje') and meal_counter <= 2:
-            daily_breakfast.append(recipes[random_recipe]['nazwa'])
-            meal_counter +=1
-        elif ((recipes[random_recipe]['rodzaj'] == 'zupy') or (recipes[random_recipe]['rodzaj'] == 'dania-glowne')) and meal_counter == 3:
-            daily_dinner.append(recipes[random_recipe]['nazwa'])
-            meal_counter +=1
-        elif (recipes[random_recipe]['rodzaj'] == 'sniadania-kolacje') and meal_counter > 3:
-            daily_supper.append(recipes[random_recipe]['nazwa'])
-            meal_counter +=1
-        else:
-            continue
-
-        if kcal_daily + float(recipes[random_recipe]['kcal']) > kcal_limit + tollerance_kcal:
-            break
-        else:
-            kcal_daily += float(recipes[random_recipe]['kcal'])
-            protein_daily += float(recipes[random_recipe]['b'])
-            carbs_daily += float(recipes[random_recipe]['ww'])
-            fat_daily += float(recipes[random_recipe]['t'])
-
-            # print('------------------------------------------------')
-            # print(recipes[random_recipe]['nazwa'])
-            # print(recipes[random_recipe]['rodzaj'])
-
-    print('------------------------------------------------')
-    print(f'kcal: {int(kcal_daily)} | b: {int(protein_daily)} | t: {int(fat_daily)} | ww: {int(carbs_daily)}')
-    print(f'Procentowy rozkład makroskładników | b: {int(((protein_daily*4)/kcal_daily)*100)}% | t: {int(((fat_daily*9)/kcal_daily)*100)}% | ww: {int(((carbs_daily*4)/kcal_daily)*100)}%')
-
-    print('------------------------------------------------')
-    print(daily_breakfast)
-    print(daily_dinner)
-    print(daily_supper)
-
-
-all_meals = load_json_from_file()
-
-#print_all_recipes(all_meals)
-#make_daily_menu(all_meals, 2300, 5)
-
-#daily(all_meals, 2500, 3)
-
+if __name__ == "__main__":
+    all_meals = load_json_from_file()
+    daily_menu(all_meals, 100, 2300, 5)
